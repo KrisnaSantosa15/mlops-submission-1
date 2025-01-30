@@ -1,0 +1,287 @@
+feature {
+  name: "Age"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "CAEC"
+  type: BYTES
+  domain: "CAEC"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "CALC"
+  type: BYTES
+  domain: "CALC"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "CH2O"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "FAF"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "FAVC"
+  type: BYTES
+  domain: "FAVC"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "FCVC"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "Gender"
+  type: BYTES
+  domain: "Gender"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "Height"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "MTRANS"
+  type: BYTES
+  domain: "MTRANS"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "NCP"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "Obesity"
+  type: BYTES
+  domain: "Obesity"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "SCC"
+  type: BYTES
+  domain: "SCC"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "SMOKE"
+  type: BYTES
+  domain: "SMOKE"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "TUE"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "Weight"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "family_history"
+  type: BYTES
+  domain: "family_history"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+string_domain {
+  name: "CAEC"
+  value: "Always"
+  value: "Frequently"
+  value: "Sometimes"
+  value: "no"
+}
+string_domain {
+  name: "CALC"
+  value: "Frequently"
+  value: "Sometimes"
+  value: "no"
+  value: "Always"
+}
+string_domain {
+  name: "FAVC"
+  value: "no"
+  value: "yes"
+}
+string_domain {
+  name: "Gender"
+  value: "Female"
+  value: "Male"
+}
+string_domain {
+  name: "MTRANS"
+  value: "Automobile"
+  value: "Bike"
+  value: "Motorbike"
+  value: "Public_Transportation"
+  value: "Walking"
+}
+string_domain {
+  name: "Obesity"
+  value: "Insufficient_Weight"
+  value: "Normal_Weight"
+  value: "Obesity_Type_I"
+  value: "Obesity_Type_II"
+  value: "Obesity_Type_III"
+  value: "Overweight_Level_I"
+  value: "Overweight_Level_II"
+}
+string_domain {
+  name: "SCC"
+  value: "no"
+  value: "yes"
+}
+string_domain {
+  name: "SMOKE"
+  value: "no"
+  value: "yes"
+}
+string_domain {
+  name: "family_history"
+  value: "no"
+  value: "yes"
+}

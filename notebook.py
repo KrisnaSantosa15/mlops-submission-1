@@ -5,7 +5,7 @@
 # 
 # Permasalahan yang ingin diselesaikan dalam proyek ini adalah memprediksi tingkat obesitas seseorang berdasarkan kebiasaan makan, aktivitas fisik, dan kondisi demografis. Tingkat obesitas adalah masalah kesehatan global yang dapat menyebabkan berbagai penyakit serius seperti diabetes, penyakit jantung, dan tekanan darah tinggi. Dengan memprediksi tingkat obesitas dengan tepat, kita dapat memberikan rekomendasi yang lebih personal untuk pencegahan dan penanganan obesitas lebih lanjut.
 
-# Dataset yang digunakan dalam proyek ini adalah "[Obesity Prediction Dataset](https://www.kaggle.com/datasets/ruchikakumbhar/obesity-prediction/data)" yang diambil dari platform Kaggle. Dataset ini berisi data tentang kebiasaan makan dan kondisi fisik individu dari negara Meksiko, Peru, dan Kolombia. Dataset terdiri dari 17 atribut dan 2.111 record, dengan kolom target yaitu Obesity_level yang mengklasifikasikan tingkat obesitas individu ke dalam beberapa kategori:
+# Dataset yang digunakan dalam proyek ini adalah "[Obesity Prediction Dataset](https://www.kaggle.com/datasets/ruchikakumbhar/obesity-prediction/data)" yang diambil dari platform Kaggle. Dataset ini berisi data tentang kebiasaan makan dan kondisi fisik individu dari negara Meksiko, Peru, dan Kolombia. Dataset terdiri dari 17 atribut dan 2.111 record, dengan kolom target yaitu Obesity yang mengklasifikasikan tingkat obesitas individu ke dalam beberapa kategori:
 # - Insufficient Weight
 # - Normal Weight
 # - Overweight Level I
@@ -41,7 +41,7 @@
 # - TUE : How much time do you use technological devices such as cell phone, videogames, television, computer and others?
 # - CALC : How often do you drink alcohol? (Frequently, Sometimes, Always, No)
 # - MTRANS : Which transportation do you usually use? (Automobile, Bike, Motorbike, Public_Transportation, Walking)
-# - Obesity_level (Target Column) : Obesity level (Insufficient Weight, Normal Weight, Overweight Level I, Overweight Level II, Obesity Type I, Obesity Type II, Obesity Type III)
+# - Obesity (Target Column) : Obesity level (Insufficient Weight, Normal Weight, Overweight Level I, Overweight Level II, Obesity Type I, Obesity Type II, Obesity Type III)
 
 # Langkah pertama yang akan dilakukan adalah dengan import library yang dibutuhkan dan membaca dataset yang akan digunakan.
 
@@ -236,15 +236,15 @@ TUNER_MODULE_FILE = "obesity_tuner.py"
 # 
 # Komponen ini akan melakukan tuning hyperparameter pada model yang akan digunakan. Kita perlu mendefinisikan file module yang berisi fungsi untuk membuat model, fungsi untuk meng-compile model, dan fungsi untuk melakukan tuning hyperparameter.
 
-# In[47]:
+# In[16]:
 
 
-get_ipython().run_cell_magic('writefile', '{TUNER_MODULE_FILE}', 'import tensorflow as tf\nimport tensorflow_transform as tft\nfrom tensorflow.keras import layers\nfrom tfx.components.trainer.fn_args_utils import FnArgs\nimport keras_tuner as kt\n\nNUMERIC_FEATURES = [\'Age\', \'Height\', \'Weight\', \'FCVC\', \'NCP\', \'CH2O\', \'FAF\', \'TUE\']\nCATEGORICAL_FEATURES = [\'Gender\', \'family_history\', \'FAVC\', \'CAEC\', \'SMOKE\', \'SCC\', \'CALC\', \'MTRANS\']\nLABEL_KEY = "Obesity"\n\ndef transformed_name(key):\n    return key + \'_xf\'\n\ndef tuner_fn(fn_args: FnArgs):\n    """Build the tuner to find the best hyperparameters."""\n    \n    tf_transform_output = tft.TFTransformOutput(fn_args.transform_graph_path)\n\n    hp = kt.HyperParameters()\n    \n    # Model architecture hyperparameters\n    hp.Int(\'num_hidden_layers\', 2, 4)\n    hp.Int(\'embedding_dim\', 8, 32, step=8)\n    hp.Int(\'dense_units\', 32, 256, step=32)\n    hp.Float(\'dropout_rate\', 0.1, 0.5, step=0.1)\n    \n    # Training hyperparameters\n    hp.Float(\'learning_rate\', 1e-4, 1e-2, sampling=\'log\')\n    hp.Int(\'batch_size\', 32, 128, step=32)\n    \n    tuner = kt.Hyperband(\n        hypermodel=lambda hp: model_builder(hp, tf_transform_output),\n        objective=\'val_accuracy\',\n        max_epochs=10,\n        factor=3,\n        directory=fn_args.working_dir,\n        project_name=\'obesity_tuning\')\n    \n    return tuner\n\ndef model_builder(hp, tf_transform_output):\n    """Build model with given hyperparameters."""\n    inputs = []\n    feature_layers = []\n\n    # Numeric features\n    for feature_name in NUMERIC_FEATURES:\n        numeric_input = layers.Input(\n            shape=(1,), name=transformed_name(feature_name))\n        inputs.append(numeric_input)\n        feature_layers.append(numeric_input)\n\n    # Categorical features\n    for feature_name in CATEGORICAL_FEATURES:\n        vocab_size = tf_transform_output.vocabulary_size_by_name(feature_name)\n        embedding_dim = hp.get(\'embedding_dim\')\n        categorical_input = layers.Input(\n            shape=(1,), name=transformed_name(feature_name), dtype=tf.int64)\n        inputs.append(categorical_input)\n        embedding = layers.Embedding(vocab_size, embedding_dim)(categorical_input)\n        embedding_flat = layers.Flatten()(embedding)\n        feature_layers.append(embedding_flat)\n\n    # Concatenate features\n    features = layers.concatenate(feature_layers)\n\n    # Hidden layers\n    for i in range(hp.get(\'num_hidden_layers\')):\n        features = layers.Dense(hp.get(\'dense_units\'), activation=\'relu\')(features)\n        features = layers.Dropout(hp.get(\'dropout_rate\'))(features)\n\n    outputs = layers.Dense(7, activation=\'softmax\')(features)\n    model = tf.keras.Model(inputs=inputs, outputs=outputs)\n\n    model.compile(\n        optimizer=tf.keras.optimizers.Adam(hp.get(\'learning_rate\')),\n        loss=\'sparse_categorical_crossentropy\',\n        metrics=[\'accuracy\']\n    )\n    \n    return model\n')
+get_ipython().run_cell_magic('writefile', '{TUNER_MODULE_FILE}', 'import tensorflow as tf\nimport tensorflow_transform as tft\nfrom kerastuner.engine import base_tuner \nfrom tensorflow.keras import layers\nfrom typing import NamedTuple, Dict, Text, Any \nfrom tfx.components.trainer.fn_args_utils import FnArgs\nimport kerastuner as kt\n\nNUMERIC_FEATURES = [\'Age\', \'Height\', \'Weight\', \'FCVC\', \'NCP\', \'CH2O\', \'FAF\', \'TUE\']\nCATEGORICAL_FEATURES = [\'Gender\', \'family_history\', \'FAVC\', \'CAEC\', \'SMOKE\', \'SCC\', \'CALC\', \'MTRANS\']\nLABEL_KEY = "Obesity"\n\ndef transformed_name(key):\n    return key + \'_xf\'\n\nTunerFnResult = NamedTuple(\'TunerFnResult\', [(\'tuner\', base_tuner.BaseTuner),\n                                            (\'fit_kwargs\', Dict[Text,Any])])\n\ndef _gzip_reader_fn(filenames):\n    return tf.data.TFRecordDataset(filenames, compression_type=\'GZIP\')\n\ndef _input_fn(file_pattern, tf_transform_output, batch_size=128):\n    transformed_feature_spec = (\n        tf_transform_output.transformed_feature_spec().copy()\n    )\n    \n    dataset = tf.data.experimental.make_batched_features_dataset(\n        file_pattern=file_pattern,\n        batch_size=batch_size,\n        features=transformed_feature_spec,\n        reader=_gzip_reader_fn,\n        num_epochs=1,\n        shuffle=True,\n        label_key=transformed_name(LABEL_KEY)\n    )\n    \n    return dataset\n\ndef model_builder(hp, tf_transform_output):\n    inputs = []\n    encoded_features = []\n    \n    # Numeric features\n    for feature_name in NUMERIC_FEATURES:\n        input_layer = layers.Input(shape=(1,), name=transformed_name(feature_name))\n        inputs.append(input_layer)\n        norm_layer = layers.BatchNormalization()(input_layer)\n        encoded_features.append(norm_layer)\n\n    # Categorical features\n    embedding_dim = hp.Int(\'embedding_dim\', 8, 32, step=8)\n    for feature_name in CATEGORICAL_FEATURES:\n        vocab_size = tf_transform_output.vocabulary_size_by_name(feature_name)\n        input_layer = layers.Input(shape=(1,), name=transformed_name(feature_name), dtype=tf.int64)\n        inputs.append(input_layer)\n        \n        # Add handling for out-of-vocabulary indices\n        safe_input = tf.where(\n            tf.logical_or(input_layer < 0, input_layer >= vocab_size),\n            tf.zeros_like(input_layer),\n            input_layer\n        )\n        \n        embedding = layers.Embedding(\n            vocab_size,\n            embedding_dim,\n            mask_zero=True,\n            name=f\'embedding_{feature_name}\'\n        )(safe_input)\n        \n        embedding_flat = layers.Flatten()(embedding)\n        encoded_features.append(embedding_flat)\n\n    concat_features = layers.concatenate(encoded_features)\n    \n    num_hidden_layers = hp.Int(\'num_hidden_layers\', 2, 4)\n    for i in range(num_hidden_layers):\n        units = hp.Int(f\'units_{i}\', 32, 256, step=32)\n        dropout_rate = hp.Float(f\'dropout_{i}\', 0.1, 0.5, step=0.1)\n        concat_features = layers.Dense(units, activation=\'relu\')(concat_features)\n        concat_features = layers.BatchNormalization()(concat_features)\n        concat_features = layers.Dropout(dropout_rate)(concat_features)\n\n    outputs = layers.Dense(7, activation=\'softmax\')(concat_features)\n    model = tf.keras.Model(inputs=inputs, outputs=outputs)\n    \n    learning_rate = hp.Float(\'learning_rate\', 1e-4, 1e-2, sampling=\'log\')\n    model.compile(\n        optimizer=tf.keras.optimizers.Adam(learning_rate),\n        loss=\'sparse_categorical_crossentropy\',\n        metrics=[\'accuracy\']\n    )\n    \n    return model\n\ndef tuner_fn(fn_args: FnArgs) -> TunerFnResult:\n    tf_transform_output = tft.TFTransformOutput(fn_args.transform_graph_path)\n    \n    tuner = kt.Hyperband(\n        hypermodel=lambda hp: model_builder(hp, tf_transform_output),\n        objective=\'val_accuracy\',\n        max_epochs=30,\n        factor=3,\n        directory=fn_args.working_dir,\n        project_name=\'obesity_tuning\'\n    )\n    \n    train_dataset = _input_fn(fn_args.train_files, tf_transform_output)\n    eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output)\n    \n    early_stopping = tf.keras.callbacks.EarlyStopping(\n        monitor=\'val_accuracy\', \n        patience=3,\n        restore_best_weights=True\n    )\n    \n    return TunerFnResult(\n        tuner=tuner,\n        fit_kwargs={\n            \'x\': train_dataset,\n            \'validation_data\': eval_dataset,\n            \'callbacks\': [early_stopping]\n        }\n    )\n')
 
 
 # Setelah file module tuning hyperparameter telah dibuat, kita dapat mendefinisikan komponen `Tuner` dengan mendefinisikan fungsi tuning hyperparameter yang telah dibuat sebelumnya. Komponen ini menerima input berupa dataset yang telah di-preprocess oleh komponen `Transform`.
 
-# In[48]:
+# In[17]:
 
 
 tuner = Tuner(
@@ -263,19 +263,19 @@ interactive_context.run(tuner)
 # 
 # Setelah tuning hyperparameter selesai, kita dapat melakukan training model menggunakan komponen `Trainer`. Komponen ini akan melakukan training model menggunakan dataset yang telah di-preprocess oleh komponen `Transform` dan hyperparameter yang telah di-tuning oleh komponen `Tuner`. Kita akan definisikan file module yang berisi fungsi untuk membuat model, fungsi untuk meng-compile model, dan fungsi untuk melakukan training model.
 
-# In[ ]:
+# In[18]:
 
 
 TRAINER_MODULE_FILE = "obesity_trainer.py"
 
 
-# In[ ]:
+# In[19]:
 
 
-get_ipython().run_cell_magic('writefile', '{TRAINER_MODULE_FILE}', 'import tensorflow as tf\nimport tensorflow_transform as tft\nfrom tensorflow.keras import layers\nfrom tfx.components.trainer.fn_args_utils import FnArgs\n\nNUMERIC_FEATURES = [\'Age\', \'Height\', \'Weight\', \'FCVC\', \'NCP\', \'CH2O\', \'FAF\', \'TUE\']\nCATEGORICAL_FEATURES = [\'Gender\', \'family_history\', \'FAVC\', \'CAEC\', \'SMOKE\', \'SCC\', \'CALC\', \'MTRANS\']\nLABEL_KEY = "Obesity"\n\ndef transformed_name(key):\n    return key + \'_xf\'\n\ndef gzip_reader_fn(filenames):\n    return tf.data.TFRecordDataset(filenames, compression_type=\'GZIP\')\n\ndef input_fn(file_pattern, tf_transform_output, batch_size=64):\n    transform_feature_spec = (\n        tf_transform_output.transformed_feature_spec().copy())\n    \n    dataset = tf.data.experimental.make_batched_features_dataset(\n        file_pattern=file_pattern,\n        batch_size=batch_size,\n        features=transform_feature_spec,\n        reader=gzip_reader_fn,\n        label_key=transformed_name(LABEL_KEY))\n    return dataset\n\ndef run_fn(fn_args: FnArgs):\n    """Train the model based on given args."""\n    tf_transform_output = tft.TFTransformOutput(fn_args.transform_graph_path)\n    \n    train_dataset = input_fn(fn_args.train_files, tf_transform_output)\n    eval_dataset = input_fn(fn_args.eval_files, tf_transform_output)\n    \n    # Load best hyperparameters\n    hp = fn_args.hyperparameters[\'values\']\n    \n    # Build model with best hyperparameters\n    model = build_model(hp, tf_transform_output)\n    \n    # Train model\n    model.fit(\n        train_dataset,\n        validation_data=eval_dataset,\n        epochs=10,\n        callbacks=[tf.keras.callbacks.EarlyStopping(\n            monitor=\'val_accuracy\',\n            patience=3\n        )]\n    )\n    \n    # Save model\n    model.save(fn_args.serving_model_dir, save_format=\'tf\')\n\ndef build_model(hp, tf_transform_output):\n    """Build the model using hyperparameters from tuning."""\n    inputs = []\n    feature_layers = []\n\n    # Numeric features\n    for feature_name in NUMERIC_FEATURES:\n        numeric_input = layers.Input(\n            shape=(1,), name=transformed_name(feature_name))\n        inputs.append(numeric_input)\n        feature_layers.append(numeric_input)\n\n    # Categorical features\n    for feature_name in CATEGORICAL_FEATURES:\n        vocab_size = tf_transform_output.vocabulary_size_by_name(feature_name)\n        embedding_dim = hp.get(\'embedding_dim\')\n        categorical_input = layers.Input(\n            shape=(1,), name=transformed_name(feature_name), dtype=tf.int64)\n        inputs.append(categorical_input)\n        embedding = layers.Embedding(vocab_size, embedding_dim)(categorical_input)\n        embedding_flat = layers.Flatten()(embedding)\n        feature_layers.append(embedding_flat)\n\n    # Concatenate features\n    features = layers.concatenate(feature_layers)\n\n    # Hidden layers\n    for i in range(hp.get(\'num_hidden_layers\')):\n        features = layers.Dense(hp.get(\'dense_units\'), activation=\'relu\')(features)\n        features = layers.Dropout(hp.get(\'dropout_rate\'))(features)\n\n    outputs = layers.Dense(7, activation=\'softmax\')(features)\n    model = tf.keras.Model(inputs=inputs, outputs=outputs)\n\n    model.compile(\n        optimizer=tf.keras.optimizers.Adam(hp.get(\'learning_rate\')),\n        loss=\'sparse_categorical_crossentropy\',\n        metrics=[\'accuracy\']\n    )\n    \n    return model\n')
+get_ipython().run_cell_magic('writefile', '{TRAINER_MODULE_FILE}', 'import os\nimport tensorflow as tf\nimport tensorflow_transform as tft\nfrom tensorflow.keras import layers\nfrom tfx.components.trainer.fn_args_utils import FnArgs\n\nNUMERIC_FEATURES = [\'Age\', \'Height\', \'Weight\', \'FCVC\', \'NCP\', \'CH2O\', \'FAF\', \'TUE\']\nCATEGORICAL_FEATURES = [\'Gender\', \'family_history\', \'FAVC\', \'CAEC\', \'SMOKE\', \'SCC\', \'CALC\', \'MTRANS\']\nLABEL_KEY = "Obesity"\n\ndef transformed_name(key):\n    return key + \'_xf\'\n\ndef gzip_reader_fn(filenames):\n    return tf.data.TFRecordDataset(filenames, compression_type=\'GZIP\')\n\ndef input_fn(file_pattern, tf_transform_output, batch_size=128)->tf.data.Dataset:\n    """Creates an input function that loads and preprocesses the dataset."""\n    transform_feature_spec = (\n        tf_transform_output.transformed_feature_spec().copy())\n    \n    dataset = tf.data.experimental.make_batched_features_dataset(\n        file_pattern=file_pattern,\n        batch_size=batch_size,\n        features=transform_feature_spec,\n        reader=gzip_reader_fn,\n        num_epochs=None,\n        shuffle=True,\n        shuffle_buffer_size=1000,\n        label_key=transformed_name(LABEL_KEY))\n    \n    return dataset\n\ndef _get_serve_tf_examples_fn(model, tf_transform_output):\n\n    model.tft_layer = tf_transform_output.transform_features_layer()\n\n    @tf.function\n    def serve_tf_examples_fn(serialized_tf_examples):\n\n        feature_spec = tf_transform_output.raw_feature_spec()\n\n        feature_spec.pop(LABEL_KEY)\n\n        parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)\n\n        transformed_features = model.tft_layer(parsed_features)\n\n        # get predictions using the transformed features\n        return model(transformed_features)\n\n    return serve_tf_examples_fn\n\ndef run_fn(fn_args: FnArgs):\n    """Train the model based on given args."""\n    \n    log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), \'logs\')\n\n    tensorboard_callback = tf.keras.callbacks.TensorBoard(\n        log_dir = log_dir, update_freq=\'batch\'\n    )\n    \n    \n    tf_transform_output = tft.TFTransformOutput(fn_args.transform_graph_path)\n    \n    # Get dataset and compute steps per epoch\n    batch_size = 128\n    train_dataset = input_fn(fn_args.train_files, tf_transform_output, batch_size)\n    eval_dataset = input_fn(fn_args.eval_files, tf_transform_output, batch_size)\n    \n    # Load best hyperparameters\n    hp = fn_args.hyperparameters[\'values\']\n    \n    # Build model with best hyperparameters\n    model = build_model(hp, tf_transform_output)\n    \n    steps_per_epoch = 26\n    validation_steps = 7\n    \n    # Train model\n    model.fit(\n        train_dataset,\n        validation_data=eval_dataset,\n        epochs=30,\n        steps_per_epoch=steps_per_epoch,\n        validation_steps=validation_steps,\n        callbacks=[tf.keras.callbacks.EarlyStopping(\n            monitor=\'val_accuracy\',\n            patience=5,\n            restore_best_weights=True\n        )]\n    )\n    \n    # Save model\n    signatures = {\n        \'serving_default\':\n        _get_serve_tf_examples_fn(model, tf_transform_output).get_concrete_function(\n                                    tf.TensorSpec(\n                                    shape=[None],\n                                    dtype=tf.string,\n                                    name=\'examples\'))\n    }\n    model.save(fn_args.serving_model_dir, save_format=\'tf\', signatures=signatures)\n\ndef build_model(hp, tf_transform_output):\n    inputs = []\n    encoded_features = []\n    \n    # Numeric features with BatchNormalization\n    for feature_name in NUMERIC_FEATURES:\n        input_layer = layers.Input(shape=(1,), name=transformed_name(feature_name))\n        inputs.append(input_layer)\n        norm_layer = layers.BatchNormalization()(input_layer)\n        encoded_features.append(norm_layer)\n\n    # Categorical features with embeddings\n    for feature_name in CATEGORICAL_FEATURES:\n        vocab_size = tf_transform_output.vocabulary_size_by_name(feature_name)\n        input_layer = layers.Input(shape=(1,), name=transformed_name(feature_name), dtype=tf.int64)\n        inputs.append(input_layer)\n        \n        safe_input = tf.where(\n            tf.logical_or(input_layer < 0, input_layer >= vocab_size),\n            tf.zeros_like(input_layer),\n            input_layer\n        )\n        \n        embedding = layers.Embedding(\n            vocab_size,\n            hp.get(\'embedding_dim\'),\n            mask_zero=True\n        )(safe_input)\n        \n        embedding_flat = layers.Flatten()(embedding)\n        encoded_features.append(embedding_flat)\n\n    concat_features = layers.concatenate(encoded_features)\n    \n    # Dynamic hidden layers from tuner\n    for i in range(hp.get(\'num_hidden_layers\')):\n        units = hp.get(f\'units_{i}\')\n        dropout_rate = hp.get(f\'dropout_{i}\')\n        concat_features = layers.Dense(units, activation=\'relu\')(concat_features)  # Added activation\n        concat_features = layers.BatchNormalization()(concat_features)\n        concat_features = layers.Dropout(dropout_rate)(concat_features)\n\n    outputs = layers.Dense(7, activation=\'softmax\')(concat_features)\n    model = tf.keras.Model(inputs=inputs, outputs=outputs)\n    \n    model.compile(\n        optimizer=tf.keras.optimizers.Adam(hp.get(\'learning_rate\')),\n        loss=\'sparse_categorical_crossentropy\',\n        metrics=[\'accuracy\']\n    )\n    \n    \n    \n    return model\n')
 
 
-# In[ ]:
+# In[20]:
 
 
 trainer = Trainer(
@@ -299,7 +299,7 @@ interactive_context.run(trainer)
 # 
 # Pada komponen ini, kita akan menentukan baseline model yang akan digunakan untuk membandingkan model yang telah di-training.
 
-# In[ ]:
+# In[21]:
 
 
 model_resolver = Resolver(
@@ -315,11 +315,18 @@ interactive_context.run(model_resolver)
 # 
 # Pada komponen ini, kita akan mengevaluasi model yang telah di-training. Komponen ini akan menghasilkan beberapa metric evaluasi model, seperti accuracy, precision, recall, dan lain-lain. Kode di bawah ini akan menampilkan metric evaluasi model dengan threshold 0.85.
 
-# In[ ]:
+# In[22]:
 
+
+LABEL_KEY = "Obesity"
+
+def transformed_name(key):
+    return key + '_xf'
 
 eval_config = tfma.EvalConfig(
-    model_specs=[tfma.ModelSpec(label_key='Obesity')],
+    model_specs=[tfma.ModelSpec(
+            label_key=transformed_name(LABEL_KEY)
+        )],
     slicing_specs=[tfma.SlicingSpec()],
     metrics_specs=[
         tfma.MetricsSpec(metrics=[
@@ -344,11 +351,11 @@ eval_config = tfma.EvalConfig(
 
 # Setelah membuat konfigurasi untuk komponen `Evaluator`, kita dapat mengevaluasi model yang telah di-training dengan menjalankan komponen `Evaluator` pada kode di bawah ini.
 
-# In[ ]:
+# In[23]:
 
 
 evaluator = Evaluator(
-    examples=example_gen.outputs['examples'],
+    examples=transform.outputs['transformed_examples'],
     model=trainer.outputs['model'],
     baseline_model=model_resolver.outputs['model'],
     eval_config=eval_config
@@ -359,7 +366,7 @@ interactive_context.run(evaluator)
 
 # Untuk dapat melihat hasil evaluasi model dengan visualisasi, kita menggunakan  `tfma.view.render_slicing_metrics` yang akan menampilkan metric evaluasi model dengan visualisasi.
 
-# In[ ]:
+# In[24]:
 
 
 # Visualize evaluation results
@@ -372,7 +379,7 @@ tfma.view.render_slicing_metrics(tfma_result)
 # 
 # Setelah model dievaluasi, langkah terakhir adalah melakukan push model ke production. Pada kasus ini, kita akan menggunakan komponen `Pusher` untuk melakukan push model ke production. Komponen ini akan melakukan menyimpan model yang telah di-training ke storage yang telah ditentukan.
 
-# In[ ]:
+# In[25]:
 
 
 pusher = Pusher(
